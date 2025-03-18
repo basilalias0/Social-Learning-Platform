@@ -1,0 +1,94 @@
+// replyController.js
+const Reply = require('../Models/replyModel');
+const Post = require('../Models/postModel');
+const asyncHandler = require('express-async-handler');
+
+const replyController = {
+  // Create a new reply
+  createReply: asyncHandler(async (req, res) => {
+    const { content, postId } = req.body;
+
+    if (!content || !postId) {
+      return res.status(400).json({ message: 'Content and postId are required' });
+    }
+
+    // Check if the post exists
+    const post = await Post.findById(postId);
+    if (!post) {
+      return res.status(404).json({ message: 'Post not found' });
+    }
+
+    const reply = new Reply({
+      content,
+      postId,
+      userId: req.user._id, // Set the user who created the reply
+    });
+
+    const createdReply = await reply.save();
+    res.status(201).json(createdReply);
+  }),
+
+  // Get all replies
+  getAllReplies: asyncHandler(async (req, res) => {
+    const replies = await Reply.find().populate('userId postId');
+    res.json(replies);
+  }),
+
+  // Get reply by ID
+  getReplyById: asyncHandler(async (req, res) => {
+    const reply = await Reply.findById(req.params.id).populate('userId postId');
+    if (reply) {
+      res.json(reply);
+    } else {
+      res.status(404).json({ message: 'Reply not found' });
+    }
+  }),
+
+  // Update reply (only creator or admin)
+  updateReply: asyncHandler(async (req, res) => {
+    const reply = await Reply.findById(req.params.id);
+
+    if (reply) {
+      if (req.user.role !== 'admin' && reply.userId.toString() !== req.user._id.toString()) {
+        return res.status(403).json({ message: 'You are not authorized to update this reply' });
+      }
+
+      reply.content = req.body.content || reply.content;
+
+      const updatedReply = await reply.save();
+      res.json(updatedReply);
+    } else {
+      res.status(404).json({ message: 'Reply not found' });
+    }
+  }),
+
+  // Delete reply (only creator or admin)
+  deleteReply: asyncHandler(async (req, res) => {
+    const reply = await Reply.findById(req.params.id);
+
+    if (reply) {
+      if (req.user.role !== 'admin' && reply.userId.toString() !== req.user._id.toString()) {
+        return res.status(403).json({ message: 'You are not authorized to delete this reply' });
+      }
+
+      await reply.remove();
+      res.json({ message: 'Reply removed' });
+    } else {
+      res.status(404).json({ message: 'Reply not found' });
+    }
+  }),
+
+  // Get replies by post ID
+  getRepliesByPostId: asyncHandler(async (req, res) => {
+    const replies = await Reply.find({ postId: req.params.postId }).populate('userId postId');
+    res.json(replies);
+  }),
+
+  // Get replies by user ID
+  getRepliesByUserId: asyncHandler(async (req, res) => {
+    const replies = await Reply.find({ userId: req.params.userId }).populate('userId postId');
+    res.json(replies);
+  }),
+};
+
+module.exports = replyController;

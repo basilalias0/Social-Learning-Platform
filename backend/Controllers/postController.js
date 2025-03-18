@@ -1,7 +1,7 @@
 // postController.js
 const DiscussionForum = require('../Models/discussionForumModel');
 const asyncHandler = require('express-async-handler');
-const Post = require('../Models/PostModel');
+const Post = require('../Models/postModel');
 
 const postController = {
   // Create a new post
