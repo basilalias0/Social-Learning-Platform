@@ -5,7 +5,7 @@ const User = require('../Models/userModel');
 const Gamification = require('../Models/gamificationModel');
 const ResourceLibrary = require('../Models/resourceLibraryModel');
 const StudyGroup = require('../Models/studyGroupModel');
-const Post = require('../models/PostModel');
+const Post = require('../Models/PostModel');
 
 const feedController = {
   // Get user feed
