@@ -1,28 +1,8 @@
-// chatMessageController.js
-const ChatMessage = require('../Models/chatMessageModel');
+// Controllers/chatController.js
 const asyncHandler = require('express-async-handler');
+const ChatMessage = require('../Models/chatMessageModel');
 
-const chatMessageController = {
-  // Create a new chat message
-  createChatMessage: asyncHandler(async (req, res) => {
-    const { senderId, receiverId, message, groupId } = req.body;
-
-    if (!senderId || (!receiverId && !groupId) || !message) {
-      return res.status(400).json({ message: 'Please provide senderId, receiverId or groupId, and message' });
-    }
-
-    const chatMessage = new ChatMessage({
-      senderId,
-      receiverId,
-      message,
-      groupId,
-    });
-
-    const createdChatMessage = await chatMessage.save();
-    res.status(201).json(createdChatMessage);
-  }),
-
-  // Get chat messages between two users
+const chatController = {
   getChatMessagesBetweenUsers: asyncHandler(async (req, res) => {
     const { userId1, userId2 } = req.params;
 
@@ -38,7 +18,6 @@ const chatMessageController = {
     res.json(messages);
   }),
 
-  // Get chat messages in a group
   getChatMessagesInGroup: asyncHandler(async (req, res) => {
     const { groupId } = req.params;
 
@@ -49,19 +28,24 @@ const chatMessageController = {
     res.json(messages);
   }),
 
-  //get all chat messages from a user.
-  getAllChatMessagesFromUser: asyncHandler(async (req, res) => {
-    const { userId } = req.params;
+  createChatMessage: asyncHandler(async (req, res) => {
+    const { senderId, receiverId, message, groupId } = req.body;
 
-    const messages = await ChatMessage.find({
-      $or: [
-        { senderId: userId },
-        { receiverId: userId }
-      ]
-    }).sort({ createdAt: 1 }).populate('senderId receiverId groupId');
+    if (!senderId || (!receiverId && !groupId) || !message) {
+      return res.status(400).json({ message: 'Please provide senderId, receiverId or groupId, and message' });
+    }
 
-    res.json(messages);
+    const chatMessage = new ChatMessage({
+      senderId,
+      receiverId,
+      content: message,
+      groupId,
+      received: receiverId ? true : false,
+    });
+
+    const createdChatMessage = await chatMessage.save();
+    res.status(201).json(createdChatMessage);
   }),
 };
 
-module.exports = chatMessageController;
+module.exports = chatController;

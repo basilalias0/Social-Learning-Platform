@@ -1,13 +1,16 @@
-// chatMessageRoutes.js
+// Routes/chatRoutes.js
 const express = require('express');
-const chatMessageRouter = express.Router();
-const chatMessageController = require('../Controllers/chatMessageController');
+const chatRouter = express.Router();
 const { protect } = require('../Middlewares/authMiddleware');
+const chatController = require('../Controllers/chatMessageController');
 
-// Protected Routes (All chat routes are protected)
-chatMessageRouter.post('/', protect, chatMessageController.createChatMessage);
-chatMessageRouter.get('/users/:userId1/:userId2', protect, chatMessageController.getChatMessagesBetweenUsers);
-chatMessageRouter.get('/group/:groupId', protect, chatMessageController.getChatMessagesInGroup);
-chatMessageRouter.get('/user/:userId', protect, chatMessageController.getAllChatMessagesFromUser);
+// Get chat messages between two users
+chatRouter.get('/users/:userId1/:userId2', protect, chatController.getChatMessagesBetweenUsers);
 
-module.exports = chatMessageRouter;
+// Get chat messages in a group
+chatRouter.get('/group/:groupId', protect, chatController.getChatMessagesInGroup);
+
+// Create a new chat message
+chatRouter.post('/', protect, chatController.createChatMessage);
+
+module.exports = chatRouter;
