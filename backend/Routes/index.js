@@ -14,6 +14,7 @@ const postRouter = require('./postRouter');
 const questionRouter = require('./questionRouter');
 const quizRouter = require('./quizRouter');
 const replyRouter = require('./replyRouter');
+const studyGroupRouter = require('./studyGroupRouter');
 const router = express();
 
 
@@ -32,7 +33,7 @@ router.use("/post",postRouter)
 router.use("/question",questionRouter)
 router.use("/quiz",quizRouter)
 router.use("/reply",replyRouter)
-
+router.use("/study-group",studyGroupRouter)
 
 
 module.exports = router
