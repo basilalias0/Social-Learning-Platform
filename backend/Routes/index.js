@@ -11,6 +11,8 @@ const resourceLibraryRouter = require('./resourceLibraryRouter');
 const moduleRouter = require('./moduleRouter');
 const notificationRouter = require('./notificationRouter');
 const postRouter = require('./postRouter');
+const questionRouter = require('./questionRouter');
+const quizRouter = require('./quizRouter');
 const router = express();
 
 
@@ -26,5 +28,7 @@ router.use("/resource-library",resourceLibraryRouter)
 router.use("/module",moduleRouter)
 router.use("/notification",notificationRouter)
 router.use("/post",postRouter)
+router.use("/question",questionRouter)
+router.use("/quiz",quizRouter)
 
 module.exports = router
