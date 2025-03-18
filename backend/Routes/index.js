@@ -8,6 +8,7 @@ const feedbackRouter = require('./feedbackRouter');
 const feedRouter = require('./feedRouter');
 const gamificationRouter = require('./gamificationRouter');
 const resourceLibraryRouter = require('./resourceLibraryRouter');
+const moduleRouter = require('./moduleRouter');
 const router = express();
 
 
@@ -20,6 +21,7 @@ router.use("/feedback",feedbackRouter)
 router.use("/feed",feedRouter)
 router.use("/gamification",gamificationRouter)
 router.use("/resource-library",resourceLibraryRouter)
+router.use("/module",moduleRouter)
 
 
 module.exports = router
