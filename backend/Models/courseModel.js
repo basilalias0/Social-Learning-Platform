@@ -1,0 +1,15 @@
+const mongoose = require('mongoose');
+
+const courseSchema = new mongoose.Schema({
+  title: { type: String, required: true },
+  description: { type: String },
+  instructorId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  modules: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Module' }],
+  enrollmentCount: { type: Number, default: 0 },
+  prerequisites: [{ type: String }],
+  category: { type: String },
+  courseImage: { type: String }, // URL
+}, { timestamps: true });
+
+const Course = mongoose.model('Course', courseSchema);
+module.exports = Course;
