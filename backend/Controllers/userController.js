@@ -235,6 +235,16 @@ const userController = {
       friend.friends.push(req.user._id);
       await user.save();
       await friend.save();
+
+      const notification = new Notification({
+        userId: friendId,
+        type: 'friendRequestAccepted',
+        message: `${user.username} accepted your friend request.`,
+        relatedId: req.user._id,
+        relatedModel: 'User',
+      });
+      await notification.save();
+
       res.json({message: "Friend added successfully"});
     }catch(error){
       console.error('Add Friend Error:', error);
@@ -255,6 +265,16 @@ const userController = {
       }
       user.followingUsers.push(userId);
       await user.save();
+
+      const notification = new Notification({
+        userId: userId,
+        type: 'newPost', // Or a more specific notification type
+        message: `${user.username} started following you.`,
+        relatedId: req.user._id,
+        relatedModel: 'User',
+      });
+      await notification.save();
+      
       res.json({message: "User followed successfully"});
     }catch(error){
       console.error('Follow User Error:', error);

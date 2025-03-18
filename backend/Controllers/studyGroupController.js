@@ -2,46 +2,43 @@
 const StudyGroup = require('../Models/studyGroupModel');
 const DiscussionForum = require('../Models/discussionForumModel');
 const asyncHandler = require('express-async-handler');
+const Notification = require('../Models/notificationModel');
 
 const studyGroupController = {
   // Create a new study group
   createStudyGroup: asyncHandler(async (req, res) => {
-    const { name, description, courseId } = req.body;
+    const { groupName, description, settings, courseId, forumId, tags } = req.body;
 
-    if (!name || !courseId) {
-      return res.status(400).json({ message: 'Name and courseId are required' });
+    if (!groupName) {
+      return res.status(400).json({ message: 'GroupName is required' });
     }
 
-    // Create a corresponding discussion forum for the study group
-    const forum = new DiscussionForum({
-      title: `${name} Forum`,
-      description: `Discussion forum for ${name}`,
-      courseId: courseId,
-    });
-
-    const createdForum = await forum.save();
-
     const studyGroup = new StudyGroup({
-      name,
+      groupName,
       description,
+      settings,
       courseId,
-      forumId: createdForum._id, // Link the forum ID
-      members: [req.user._id], // Add the creator as a member
+      forumId,
+      groupImage: req.file ? req.file.path : null, // Store image path from middleware
+      tags,
+      members: [req.user._id],
+      admins: [req.user._id],
     });
 
     const createdStudyGroup = await studyGroup.save();
+
     res.status(201).json(createdStudyGroup);
   }),
 
   // Get all study groups
   getAllStudyGroups: asyncHandler(async (req, res) => {
-    const studyGroups = await StudyGroup.find().populate('courseId members forumId');
+    const studyGroups = await StudyGroup.find().populate('members admins courseId forumId');
     res.json(studyGroups);
   }),
 
   // Get study group by ID
   getStudyGroupById: asyncHandler(async (req, res) => {
-    const studyGroup = await StudyGroup.findById(req.params.id).populate('courseId members forumId');
+    const studyGroup = await StudyGroup.findById(req.params.id).populate('members admins courseId forumId');
     if (studyGroup) {
       res.json(studyGroup);
     } else {
@@ -49,17 +46,24 @@ const studyGroupController = {
     }
   }),
 
-  // Update study group (only creator or admin)
+  // Update study group (only admins)
   updateStudyGroup: asyncHandler(async (req, res) => {
     const studyGroup = await StudyGroup.findById(req.params.id);
 
     if (studyGroup) {
-      if (req.user.role !== 'admin' && !studyGroup.members.includes(req.user._id)) {
+      if (!studyGroup.admins.includes(req.user._id)) {
         return res.status(403).json({ message: 'You are not authorized to update this study group' });
       }
 
-      studyGroup.name = req.body.name || studyGroup.name;
-      studyGroup.description = req.body.description || studyGroup.description;
+      const { groupName, description, settings, courseId, forumId, tags } = req.body;
+
+      studyGroup.groupName = groupName || studyGroup.groupName;
+      studyGroup.description = description || studyGroup.description;
+      studyGroup.settings = settings || studyGroup.settings;
+      studyGroup.courseId = courseId || studyGroup.courseId;
+      studyGroup.forumId = forumId || studyGroup.forumId;
+      studyGroup.groupImage = req.file ? req.file.path : studyGroup.groupImage; // Update image if new file is uploaded
+      studyGroup.tags = tags || studyGroup.tags;
 
       const updatedStudyGroup = await studyGroup.save();
       res.json(updatedStudyGroup);
@@ -68,17 +72,18 @@ const studyGroupController = {
     }
   }),
 
-  // Delete study group (only creator or admin)
+  // Delete study group (only admins)
   deleteStudyGroup: asyncHandler(async (req, res) => {
     const studyGroup = await StudyGroup.findById(req.params.id);
 
     if (studyGroup) {
-      if (req.user.role !== 'admin' && !studyGroup.members.includes(req.user._id)) {
+      if (!studyGroup.admins.includes(req.user._id)) {
         return res.status(403).json({ message: 'You are not authorized to delete this study group' });
       }
 
-      // Delete the associated forum
-      await DiscussionForum.findByIdAndDelete(studyGroup.forumId);
+      if (studyGroup.forumId) {
+        await DiscussionForum.findByIdAndDelete(studyGroup.forumId);
+      }
 
       await studyGroup.remove();
       res.json({ message: 'Study group removed' });
@@ -87,46 +92,126 @@ const studyGroupController = {
     }
   }),
 
-  // Add member to study group
+  // Add member to study group (only admins)
   addMember: asyncHandler(async (req, res) => {
     const studyGroup = await StudyGroup.findById(req.params.id);
 
     if (studyGroup) {
+      if (!studyGroup.admins.includes(req.user._id)) {
+        return res.status(403).json({ message: 'You are not authorized to add members to this study group' });
+      }
+
       if (!studyGroup.members.includes(req.body.userId)) {
         studyGroup.members.push(req.body.userId);
         await studyGroup.save();
+
+        const notification = new Notification({
+          userId: req.body.userId,
+          type: 'groupJoined',
+          message: `<span class="math-inline">\{req\.user\.username\} added you to the study group "</span>{studyGroup.groupName}".`,
+          relatedId: studyGroup._id,
+          relatedModel: 'StudyGroup',
+        });
+        await notification.save();
+
         res.json({ message: 'Member added' });
       } else {
-        res.status(400).json({message: "User is already a member."});
+        res.status(400).json({ message: 'User is already a member.' });
       }
     } else {
       res.status(404).json({ message: 'Study group not found' });
     }
   }),
 
-  // Remove member from study group
+  // Remove member from study group (only admins)
   removeMember: asyncHandler(async (req, res) => {
     const studyGroup = await StudyGroup.findById(req.params.id);
 
     if (studyGroup) {
+      if (!studyGroup.admins.includes(req.user._id)) {
+        return res.status(403).json({ message: 'You are not authorized to remove members from this study group' });
+      }
+
       const index = studyGroup.members.indexOf(req.body.userId);
       if (index > -1) {
         studyGroup.members.splice(index, 1);
         await studyGroup.save();
+
         res.json({ message: 'Member removed' });
       } else {
-        res.status(404).json({message: "User is not a member of this group."});
+        res.status(404).json({ message: 'User is not a member of this group.' });
       }
     } else {
       res.status(404).json({ message: 'Study group not found' });
     }
   }),
 
-  //Get Study Groups by course Id
-  getStudyGroupsByCourseId: asyncHandler(async(req, res)=>{
-    const studyGroups = await StudyGroup.find({courseId: req.params.courseId}).populate('courseId members forumId');
-    res.json(studyGroups);
-  })
+  // Invite user to group (only admins)
+  inviteUserToGroup: asyncHandler(async (req, res) => {
+    const { groupId, userId } = req.body;
+    const studyGroup = await StudyGroup.findById(groupId);
+
+    if (!studyGroup) {
+      return res.status(404).json({ message: 'Study group not found' });
+    }
+
+    if (!studyGroup.admins.includes(req.user._id)) {
+      return res.status(403).json({ message: 'You are not authorized to invite members to this study group' });
+    }
+
+    if (studyGroup.members.includes(userId)) {
+      return res.status(400).json({ message: 'User is already a member.' });
+    }
+
+    if (studyGroup.invitedUsers.includes(userId)) {
+      return res.status(400).json({ message: 'User is already invited.' });
+    }
+
+    studyGroup.invitedUsers.push(userId);
+    await studyGroup.save();
+
+    const notification = new Notification({
+      userId: userId,
+      type: 'groupInvitation',
+      message: `<span class="math-inline">\{req\.user\.username\} invited you to join the group "</span>{studyGroup.groupName}".`,
+      relatedId: groupId,
+      relatedModel: 'StudyGroup',
+    });
+    await notification.save();
+
+    res.json({ message: 'User invited to group' });
+  }),
+
+  // Join group
+  joinGroup: asyncHandler(async (req, res) => {
+    const { groupId } = req.body;
+    const studyGroup = await StudyGroup.findById(groupId);
+
+    if (!studyGroup) {
+      return res.status(404).json({ message: 'Study group not found' });
+    }
+
+    if (studyGroup.members.includes(req.user._id)) {
+      return res.status(400).json({ message: 'User is already a member.' });
+    }
+
+    studyGroup.invitedUsers = studyGroup.invitedUsers.filter(id => id.toString() !== req.user._id.toString());
+    studyGroup.members.push(req.user._id);
+    await studyGroup.save();
+
+    if (studyGroup.admins.length > 0) {
+      const notification = new Notification({
+        userId: studyGroup.admins[0],
+        type: 'groupJoined',
+        message: `<span class="math-inline">\{req\.user\.username\} joined your group "</span>{studyGroup.groupName}".`,
+        relatedId: groupId,
+        relatedModel: 'StudyGroup',
+      });
+      await notification.save();
+    }
+
+    res.json({ message: 'User joined group successfully'  })
+}),
 };
 
 module.exports = studyGroupController;

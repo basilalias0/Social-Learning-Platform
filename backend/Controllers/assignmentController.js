@@ -2,7 +2,9 @@
 const Assignment = require('../Models/assignmentModel');
 const Course = require('../Models/courseModel');
 const Module = require('../Models/moduleModel');
+const Notification = require('../Models/notificationModel');
 const asyncHandler = require('express-async-handler');
+const User = require('../Models/userModel'); // Import User model
 
 const assignmentController = {
   // Create a new assignment
@@ -95,16 +97,66 @@ const assignmentController = {
   }),
 
   // Get Assignments by CourseId
-  getAssignmentsByCourseId: asyncHandler(async(req, res)=>{
-    const assignments = await Assignment.find({courseId: req.params.courseId}).populate('moduleId');
+  getAssignmentsByCourseId: asyncHandler(async (req, res) => {
+    const assignments = await Assignment.find({ courseId: req.params.courseId }).populate('moduleId');
     res.json(assignments);
   }),
 
   // Get Assignments by ModuleId
-  getAssignmentsByModuleId: asyncHandler(async(req, res)=>{
-    const assignments = await Assignment.find({moduleId: req.params.moduleId}).populate('courseId');
+  getAssignmentsByModuleId: asyncHandler(async (req, res) => {
+    const assignments = await Assignment.find({ moduleId: req.params.moduleId }).populate('courseId');
     res.json(assignments);
-  })
+  }),
+
+  // Grade Assignment
+  gradeAssignment: asyncHandler(async (req, res) => {
+    const { assignmentId, studentId, grade } = req.body;
+
+    try {
+      const assignment = await Assignment.findById(assignmentId);
+      const student = await User.findById(studentId);
+
+      if (!assignment) {
+        return res.status(404).json({ message: 'Assignment not found' });
+      }
+
+      if (!student) {
+        return res.status(404).json({ message: 'Student not found' });
+      }
+
+      // Add logic to store the grade in the assignment or a related submission model
+      // Example: Assuming you have a submissions array in the Assignment model
+      if (!assignment.submissions) {
+        assignment.submissions = [];
+      }
+
+      const submissionIndex = assignment.submissions.findIndex(
+        (submission) => submission.studentId.toString() === studentId.toString()
+      );
+
+      if (submissionIndex === -1) {
+        assignment.submissions.push({ studentId, grade });
+      } else {
+        assignment.submissions[submissionIndex].grade = grade;
+      }
+
+      await assignment.save();
+
+      const notification = new Notification({
+        userId: studentId,
+        type: 'assignmentGraded',
+        message: `Your assignment "${assignment.title}" has been graded.`,
+        relatedId: assignmentId,
+        relatedModel: 'Assignment',
+      });
+      await notification.save();
+
+      res.json({ message: 'Assignment graded successfully' });
+    } catch (error) {
+      console.error('Grading error:', error);
+      res.status(500).json({ message: 'Internal server error during grading' });
+    }
+  }),
 };
 
 module.exports = assignmentController;

@@ -31,6 +31,17 @@ function setupSocket(server) {
         const savedMessage = await chatMessage.save();
         const populatedMessage = await ChatMessage.findById(savedMessage._id).populate('senderId receiverId groupId');
 
+        if (receiverId) {
+            const notification = new Notification({
+              userId: receiverId,
+              type: 'newMessage',
+              message: `${populatedMessage.senderId.username} sent you a message.`,
+              relatedId: populatedMessage._id,
+              relatedModel: 'ChatMessage',
+            });
+            await notification.save();
+          }
+
         io.to(roomId).emit('message', populatedMessage);
         console.log(`Message sent to room ${roomId}: ${message}`);
       } catch (error) {

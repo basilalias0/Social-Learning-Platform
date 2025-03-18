@@ -25,6 +25,16 @@ const postController = {
     });
 
     const createdPost = await post.save();
+
+    const notification = new Notification({
+      userId: req.user._id,
+      type: 'newPost',
+      message: `You created a new post.`,
+      relatedId: createdPost._id,
+      relatedModel: 'Post',
+    });
+    await notification.save();
+
     res.status(201).json(createdPost);
   }),
 

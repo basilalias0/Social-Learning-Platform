@@ -1,6 +1,8 @@
 // resourceLibraryController.js
 const ResourceLibrary = require('../Models/resourceLibraryModel');
+const Notification = require('../Models/notificationModel');
 const asyncHandler = require('express-async-handler');
+const User = require('../Models/userModel'); // Import User model
 
 const resourceLibraryController = {
   // Create a new resource
@@ -86,6 +88,50 @@ const resourceLibraryController = {
   getResourcesByCategory: asyncHandler(async (req, res) => {
     const resources = await ResourceLibrary.find({ category: req.params.category }).populate('userId');
     res.json(resources);
+  }),
+
+  // Share resource with user
+  shareResource: asyncHandler(async (req, res) => {
+    const { resourceId, userId } = req.body;
+
+    try {
+      const resource = await ResourceLibrary.findById(resourceId);
+      const user = await User.findById(userId);
+
+      if (!resource) {
+        return res.status(404).json({ message: 'Resource not found' });
+      }
+
+      if (!user) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+
+      // Add logic to store shared resources in the user's profile
+      if (!user.sharedResources) {
+        user.sharedResources = [];
+      }
+
+      if (user.sharedResources.includes(resourceId)) {
+        return res.status(400).json({ message: 'Resource already shared with user' });
+      }
+
+      user.sharedResources.push(resourceId);
+      await user.save();
+
+      const notification = new Notification({
+        userId: userId,
+        type: 'resourceShared',
+        message: `The resource "${resource.title}" was shared with you.`,
+        relatedId: resourceId,
+        relatedModel: 'Resource',
+      });
+      await notification.save();
+
+      res.json({ message: 'Resource shared successfully' });
+    } catch (error) {
+      console.error('Sharing error:', error);
+      res.status(500).json({ message: 'Internal server error during sharing' });
+    }
   }),
 };
 

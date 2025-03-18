@@ -1,17 +1,16 @@
+// assignmentRoutes.js
 const express = require('express');
 const assignmentRouter = express.Router();
 const assignmentController = require('../Controllers/assignmentController');
-const { protect, authorize } = require('../Middlewares/authMiddleware');
+const { protect } = require('../Middlewares/authMiddleware'); // Assuming you have protect middleware
 
-// Public Routes
-assignmentRouter.get('/', assignmentController.getAllAssignments);
-assignmentRouter.get('/:id', assignmentController.getAssignmentById);
-assignmentRouter.get('/course/:courseId', assignmentController.getAssignmentsByCourseId);
-assignmentRouter.get('/module/:moduleId', assignmentController.getAssignmentsByModuleId);
-
-// Protected Routes (Instructor/Admin)
-assignmentRouter.post('/', protect, authorize('instructor', 'admin'), assignmentController.createAssignment);
-assignmentRouter.put('/:id', protect, assignmentController.updateAssignment); // Removed authorize, now only creator can edit
-assignmentRouter.delete('/:id', protect, assignmentController.deleteAssignment); // Removed authorize, now only creator can delete
+assignmentRouter.post('/', protect, assignmentController.createAssignment);
+assignmentRouter.get('/', protect, assignmentController.getAllAssignments);
+assignmentRouter.get('/:id', protect, assignmentController.getAssignmentById);
+assignmentRouter.put('/:id', protect, assignmentController.updateAssignment);
+assignmentRouter.delete('/:id', protect, assignmentController.deleteAssignment);
+assignmentRouter.get('/course/:courseId', protect, assignmentController.getAssignmentsByCourseId);
+assignmentRouter.get('/module/:moduleId', protect, assignmentController.getAssignmentsByModuleId);
+assignmentRouter.post('/grade', protect, assignmentController.gradeAssignment);
 
 module.exports = assignmentRouter;

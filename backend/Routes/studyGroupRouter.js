@@ -1,19 +1,17 @@
-// studyGroupRoutes.js
 const express = require('express');
 const studyGroupRouter = express.Router();
-const studyGroupController = require('../Controllers/studyGroupController');
 const { protect } = require('../Middlewares/authMiddleware');
+const studyGroupController = require('../Controllers/studyGroupController');
+const upload = require('../Middlewares/imageUpload');
 
-// Public Routes
-studyGroupRouter.get('/', studyGroupController.getAllStudyGroups);
-studyGroupRouter.get('/:id', studyGroupController.getStudyGroupById);
-studyGroupRouter.get('/course/:courseId', studyGroupController.getStudyGroupsByCourseId);
-
-// Protected Routes
-studyGroupRouter.post('/', protect, studyGroupController.createStudyGroup);
-studyGroupRouter.put('/:id', protect, studyGroupController.updateStudyGroup);
+studyGroupRouter.post('/', protect, upload("groupImage").single('groupImage'), studyGroupController.createStudyGroup);
+studyGroupRouter.get('/', protect, studyGroupController.getAllStudyGroups);
+studyGroupRouter.get('/:id', protect, studyGroupController.getStudyGroupById);
+studyGroupRouter.put('/:id', protect, upload('groupImage').single('groupImage'), studyGroupController.updateStudyGroup);
 studyGroupRouter.delete('/:id', protect, studyGroupController.deleteStudyGroup);
 studyGroupRouter.put('/:id/addMember', protect, studyGroupController.addMember);
 studyGroupRouter.put('/:id/removeMember', protect, studyGroupController.removeMember);
+studyGroupRouter.post('/invite', protect, studyGroupController.inviteUserToGroup);
+studyGroupRouter.post('/join', protect, studyGroupController.joinGroup);
 
 module.exports = studyGroupRouter;
