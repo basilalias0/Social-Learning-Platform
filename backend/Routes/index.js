@@ -5,6 +5,7 @@ const chatMessageRouter = require('./chatMessageRouter');
 const courseRouter = require('./courseRouter');
 const discussionForumRouter = require('./discussionForumRouter');
 const feedbackRouter = require('./feedbackRouter');
+const feedRouter = require('./feedRouter');
 const router = express();
 
 
@@ -14,6 +15,7 @@ router.use("/chat",chatMessageRouter)
 router.use('/course',courseRouter)
 router.use("/discussion-forum",discussionForumRouter)
 router.use("/feedback",feedbackRouter)
+router.use("/feed",feedRouter)
 
 
 module.exports = router
