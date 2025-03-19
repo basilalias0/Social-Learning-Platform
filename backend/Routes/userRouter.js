@@ -13,7 +13,9 @@ userRouter.put('/reset-password/:resetToken', userController.resetPassword);
 // Protected Routes
 userRouter.get('/profile', protect, userController.getUserProfile);
 userRouter.put('/profile', protect, upload('users').single('profileImage'), userController.updateUserProfile); // Added upload middleware
-userRouter.post('/add-friend', protect, userController.addFriend);
+userRouter.post('/friend-request', protect, userController.sendFriendRequest);
+userRouter.put('/friend-request/accept', protect, userController.acceptFriendRequest);
+userRouter.put('/friend-request/reject', protect, userController.rejectFriendRequest);
 userRouter.post('/follow-user', protect, userController.followUser);
 userRouter.post('/unfollow-user', protect, userController.unfollowUser);
 userRouter.get('/feed', protect, userController.getUserFeed);

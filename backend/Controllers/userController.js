@@ -6,6 +6,11 @@ const validator = require('validator');
 const Notification = require('../Models/notificationModel');
 const Feed = require('../Models/feedModel');
 const sendEmail = require('../utils/sendEmail');
+const crypto = require('crypto');
+const Post = require('../Models/postModel');
+const StudyGroup = require('../Models/studyGroupModel');
+const Gamification = require('../Models/gamificationModel');
+const ResourceLibrary = require('../Models/resourceLibraryModel');
 
 const userController = {
   // Register a new user
@@ -126,8 +131,8 @@ const userController = {
 
     await user.save({ validateBeforeSave: false });
 
-    const resetUrl = `${req.protocol}://${req.get('host')}/api/users/reset-password/${resetToken}`;
-    const message = `You are receiving this email because you (or someone else) have requested the reset of a password. Please make a PUT request to: \n\n ${resetUrl}`;
+    const resetUrl = `${req.protocol}://${req.get('host')}/api/v1/user/reset-password/${resetToken}`;
+    const message = `You are receiving this email because you (or someone else) have requested the reset of a password. Please click on the link to reset the password: \n\n ${resetUrl}`;
 
     try {
       await sendEmail({
@@ -147,8 +152,9 @@ const userController = {
 
   // Reset Password
   resetPassword: asyncHandler(async (req, res) => {
+ 
     const resetPasswordToken = crypto.createHash('sha256').update(req.params.resetToken).digest('hex');
-
+  
     const user = await User.findOne({
       resetPasswordToken,
       resetPasswordExpire: { $gt: Date.now() },
@@ -219,20 +225,67 @@ const userController = {
       res.status(500).json({ message: 'Internal server error' });
     }
   }),
-  // add friend
-  addFriend: asyncHandler(async(req,res)=>{
-    const {friendId} = req.body;
-    try{
+  // Send friend request
+  sendFriendRequest: asyncHandler(async (req, res) => {
+    const { friendId } = req.body;
+    try {
       const user = await User.findById(req.user._id);
       const friend = await User.findById(friendId);
-      if(!user || !friend){
-        return res.status(404).json({message: "User not found"});
+
+      if (!user || !friend) {
+        return res.status(404).json({ message: 'User not found' });
       }
-      if(user.friends.includes(friendId)){
-        return res.status(400).json({message: "User is already a friend"});
+
+      if (user.friends.includes(friendId)) {
+        return res.status(400).json({ message: 'User is already a friend' });
       }
+
+      if (user.friendRequests.includes(friendId)) {
+        return res.status(400).json({message: "Friend request already sent."});
+      }
+
+      if (friend.friendRequests.includes(req.user._id)) {
+        return res.status(400).json({message: "You already have a friend request from this user."});
+      }
+
+      friend.friendRequests.push(req.user._id);
+      await friend.save();
+
+      const notification = new Notification({
+        userId: friendId,
+        type: 'friendRequest',
+        message: `${user.username} sent you a friend request.`,
+        relatedId: req.user._id,
+        relatedModel: 'User',
+      });
+      await notification.save();
+
+      res.json({ message: 'Friend request sent successfully' });
+    } catch (error) {
+      console.error('Send Friend Request Error:', error);
+      res.status(500).json({ message: 'Internal server error' });
+    }
+  }),
+
+  // Accept friend request
+  acceptFriendRequest: asyncHandler(async (req, res) => {
+    const { friendId } = req.body;
+    try {
+      const user = await User.findById(req.user._id);
+      const friend = await User.findById(friendId);
+
+      if (!user || !friend) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+
+      if (!user.friendRequests.includes(friendId)) {
+        return res.status(400).json({ message: 'Friend request not found' });
+      }
+
+      user.friendRequests = user.friendRequests.filter((id) => id.toString() !== friendId.toString());
       user.friends.push(friendId);
       friend.friends.push(req.user._id);
+
       await user.save();
       await friend.save();
 
@@ -245,18 +298,46 @@ const userController = {
       });
       await notification.save();
 
-      res.json({message: "Friend added successfully"});
-    }catch(error){
-      console.error('Add Friend Error:', error);
+      res.json({ message: 'Friend request accepted successfully' });
+    } catch (error) {
+      console.error('Accept Friend Request Error:', error);
+      res.status(500).json({ message: 'Internal server error' });
+    }
+  }),
+
+  // Reject friend request
+  rejectFriendRequest: asyncHandler(async (req, res) => {
+    const { friendId } = req.body;
+    try {
+      const user = await User.findById(req.user._id);
+
+      if (!user) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+
+      if (!user.friendRequests.includes(friendId)) {
+        return res.status(400).json({ message: 'Friend request not found' });
+      }
+
+      user.friendRequests = user.friendRequests.filter((id) => id.toString() !== friendId.toString());
+      await user.save();
+
+      res.json({ message: 'Friend request rejected successfully' });
+    } catch (error) {
+      console.error('Reject Friend Request Error:', error);
       res.status(500).json({ message: 'Internal server error' });
     }
   }),
   // follow user
   followUser: asyncHandler(async(req,res)=>{
     const {userId} = req.body;
+    if(!userId){
+      return res.status(400).json({message:'User ID is required'});
+    }
     try{
       const user = await User.findById(req.user._id);
       const followUser = await User.findById(userId);
+      
       if(!user || !followUser){
         return res.status(404).json({message: "User not found"});
       }

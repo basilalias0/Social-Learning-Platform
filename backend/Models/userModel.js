@@ -24,8 +24,11 @@ const userSchema = new mongoose.Schema({
     lastPaymentDate: { type: Date },
   },
   friends: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+  friendRequests: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
   followingUsers: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
   followingGroups: [{ type: mongoose.Schema.Types.ObjectId, ref: 'StudyGroup' }],
+  resetPasswordToken: { type: String },
+  resetPasswordExpire: { type: Date }, 
 }, { timestamps: true });
 
 const User = mongoose.model('User', userSchema);
