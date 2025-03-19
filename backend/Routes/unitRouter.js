@@ -3,15 +3,15 @@ const express = require('express');
 const unitRouter = express.Router();
 const unitController = require('../Controllers/unitController');
 const { protect } = require('../Middlewares/authMiddleware');
-
+const upload = require('../Middlewares/imageUpload');
 // Public Routes
-unitRouter.get('/', unitController.getAllUnits);
-unitRouter.get('/:id', unitController.getUnitById);
-unitRouter.get('/module/:moduleId', unitController.getUnitsByModuleId);
+unitRouter.get('/',protect, unitController.getAllUnits);
+unitRouter.get('/:id',protect, unitController.getUnitById);
+unitRouter.get('/module/:moduleId',protect, unitController.getUnitsByModuleId);
 
 // Protected Routes
-unitRouter.post('/', protect, unitController.createUnit);
-unitRouter.put('/:id', protect, unitController.updateUnit);
+unitRouter.post('/', protect, upload('units').array('files'), unitController.createUnit);
+unitRouter.put('/:id', protect, upload('units').array('files'), unitController.updateUnit);
 unitRouter.delete('/:id', protect, unitController.deleteUnit);
 
 module.exports = unitRouter;

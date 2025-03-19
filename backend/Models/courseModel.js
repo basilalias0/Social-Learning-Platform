@@ -10,6 +10,7 @@ const courseSchema = new mongoose.Schema({
   category: { type: String },
   courseImage: { type: String }, // URL
   price: { type: Number, required: true, default: 0 },
+  students: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
 }, { timestamps: true });
 
 const Course = mongoose.model('Course', courseSchema);

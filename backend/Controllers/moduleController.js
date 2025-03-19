@@ -7,26 +7,37 @@ const moduleController = {
   // Create a new module
   createModule: asyncHandler(async (req, res) => {
     const { title, description, courseId, order } = req.body;
-
+  
     if (!title || !courseId) {
       return res.status(400).json({ message: 'Title and courseId are required' });
     }
-
-    // Check if the course exists
-    const course = await Course.findById(courseId);
-    if (!course) {
-      return res.status(404).json({ message: 'Course not found' });
+  
+    try {
+      // Check if the course exists
+      const course = await Course.findById(courseId);
+      if (!course) {
+        return res.status(404).json({ message: 'Course not found' });
+      }
+  
+      // Check if the user is the instructor of the course
+      if (course.instructorId.toString() !== req.user._id.toString()) {
+        return res.status(403).json({ message: 'You are not authorized to add modules to this course' });
+      }
+  
+      const module = new Module({
+        title,
+        description,
+        courseId,
+        order: order || 0,
+        instructorId: req.user._id, // Default order if not provided
+      });
+  
+      const createdModule = await module.save();
+      res.status(201).json(createdModule);
+    } catch (error) {
+      console.error('Error creating module:', error);
+      res.status(500).json({ message: 'Internal server error', error: error.message });
     }
-
-    const module = new Module({
-      title,
-      description,
-      courseId,
-      order: order || 0, // Default order if not provided
-    });
-
-    const createdModule = await module.save();
-    res.status(201).json(createdModule);
   }),
 
   // Get all modules
@@ -37,7 +48,7 @@ const moduleController = {
 
   // Get module by ID
   getModuleById: asyncHandler(async (req, res) => {
-    const module = await Module.findById(req.params.id).populate('courseId');
+    const module = await Module.findById(req.params.id).populate('courseId units');
     if (module) {
       res.json(module);
     } else {
