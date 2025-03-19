@@ -9,6 +9,7 @@ const courseSchema = new mongoose.Schema({
   prerequisites: [{ type: String }],
   category: { type: String },
   courseImage: { type: String }, // URL
+  price: { type: Number, required: true, default: 0 },
 }, { timestamps: true });
 
 const Course = mongoose.model('Course', courseSchema);

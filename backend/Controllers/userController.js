@@ -56,7 +56,7 @@ const userController = {
           username: user.username,
           email: user.email,
           role: user.role,
-          token: generateToken(user._id, user.role),
+          token: generateToken(user._id, user.role, user.username, user.email),
         });
       } else {
         res.status(500).json({ message: 'Failed to create user' });
@@ -90,7 +90,7 @@ const userController = {
           username: user.username,
           email: user.email,
           role: user.role,
-          token: generateToken(user._id, user.role),
+          token: generateToken(user._id, user.role,user.username,user.email),
         });
       } else {
         res.status(401).json({ message: 'Invalid email or password' });
@@ -218,7 +218,7 @@ const userController = {
         _id: updatedUser._id,
         username: updatedUser.username,
         email: updatedUser.email,
-        token: generateToken(updatedUser._id, updatedUser.role),
+        token: generateToken(updatedUser._id, updatedUser.role, updatedUser.username,updatedUser.email),
       });
     } catch (error) {
       console.error('Update User Profile Error:', error);

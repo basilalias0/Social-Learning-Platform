@@ -5,13 +5,15 @@ const asyncHandler = require('express-async-handler');
 const courseController = {
   // Create a new course
   createCourse: asyncHandler(async (req, res) => {
+    console.log("running");
     try {
       const { title, description, price, category } = req.body;
   
       if (!title || !description || !price || !category) {
         return res.status(400).json({ message: 'Please provide all required fields' });
       }
-  
+      console.log("running");
+      
       const course = new Course({
         title,
         description,

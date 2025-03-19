@@ -16,7 +16,8 @@ const protect = asyncHandler(async (req, res, next) => {
         return res.status(401).json({ message: 'User not found' });
       }
 
-      req.user = user; // Set the user data in req.user
+      req.user = user;
+       // Set the user data in req.user
       next();
     } catch (error) {
       console.error(error);
@@ -30,7 +31,6 @@ const protect = asyncHandler(async (req, res, next) => {
 });
 
 function authorize(...roles) {
-  return (req, res, next) => {
     return (req, res, next) => {
       if (!req.user || !roles.includes(req.user.role)) {
         res.status(403).json({ message: `User role ${req.user.role} is not authorized to access this route` });
@@ -38,7 +38,6 @@ function authorize(...roles) {
         next();
       }
     };
-  };
 }
 
 module.exports = { protect, authorize };

@@ -2,9 +2,9 @@
 const express = require('express');
 const assignmentRouter = express.Router();
 const assignmentController = require('../Controllers/assignmentController');
-const { protect } = require('../Middlewares/authMiddleware'); // Assuming you have protect middleware
+const { protect, authorize } = require('../Middlewares/authMiddleware'); // Assuming you have protect middleware
 
-assignmentRouter.post('/', protect, assignmentController.createAssignment);
+assignmentRouter.post('/', protect, authorize('instructor'), assignmentController.createAssignment);
 assignmentRouter.get('/', protect, assignmentController.getAllAssignments);
 assignmentRouter.get('/:id', protect, assignmentController.getAssignmentById);
 assignmentRouter.put('/:id', protect, assignmentController.updateAssignment);
