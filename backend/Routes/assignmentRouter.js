@@ -11,6 +11,5 @@ assignmentRouter.put('/:id', protect, assignmentController.updateAssignment);
 assignmentRouter.delete('/:id', protect, assignmentController.deleteAssignment);
 assignmentRouter.get('/course/:courseId', protect, assignmentController.getAssignmentsByCourseId);
 assignmentRouter.get('/module/:moduleId', protect, assignmentController.getAssignmentsByModuleId);
-assignmentRouter.post('/grade', protect, assignmentController.gradeAssignment);
 
 module.exports = assignmentRouter;

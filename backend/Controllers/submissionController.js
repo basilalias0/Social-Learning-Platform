@@ -1,97 +1,179 @@
 // submissionController.js
 const Submission = require('../Models/submissionModel');
 const Assignment = require('../Models/assignmentModel');
+const Course = require('../Models/courseModel');
 const asyncHandler = require('express-async-handler');
 
 const submissionController = {
   // Create a new submission
   createSubmission: asyncHandler(async (req, res) => {
-    const { assignmentId, fileUrl, submissionText } = req.body;
+    const { assignmentId, fileUrl, feedback } = req.body;
 
     if (!assignmentId) {
       return res.status(400).json({ message: 'AssignmentId is required' });
     }
 
-    // Check if the assignment exists
-    const assignment = await Assignment.findById(assignmentId);
-    if (!assignment) {
-      return res.status(404).json({ message: 'Assignment not found' });
+    try {
+      const assignment = await Assignment.findById(assignmentId).populate('courseId');
+      if (!assignment) {
+        return res.status(404).json({ message: 'Assignment not found' });
+      }
+
+      const course = await Course.findById(assignment.courseId);
+      if (!course.students.includes(req.user._id)) {
+        return res.status(403).json({ message: 'You are not authorized to submit to this assignment' });
+      }
+
+      const submission = new Submission({
+        assignmentId,
+        studentId: req.user._id,
+        fileUrl,
+        feedback,
+      });
+
+      const createdSubmission = await submission.save();
+      res.status(201).json(createdSubmission);
+    } catch (error) {
+      console.error('Error creating submission:', error);
+      res.status(500).json({ message: 'Internal server error', error: error.message });
     }
-
-    const submission = new Submission({
-      assignmentId,
-      userId: req.user._id, // Set the user who submitted
-      fileUrl,
-      submissionText,
-    });
-
-    const createdSubmission = await submission.save();
-    res.status(201).json(createdSubmission);
   }),
 
-  // Get all submissions
+  // Get all submissions (Admin only)
   getAllSubmissions: asyncHandler(async (req, res) => {
-    const submissions = await Submission.find().populate('assignmentId userId');
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'You are not authorized to view all submissions' });
+    }
+    const submissions = await Submission.find().populate('assignmentId studentId');
     res.json(submissions);
   }),
 
   // Get submission by ID
   getSubmissionById: asyncHandler(async (req, res) => {
-    const submission = await Submission.findById(req.params.id).populate('assignmentId userId');
-    if (submission) {
-      res.json(submission);
-    } else {
-      res.status(404).json({ message: 'Submission not found' });
+    try {
+      const submission = await Submission.findById(req.params.id).populate('assignmentId studentId');
+      if (!submission) {
+        return res.status(404).json({ message: 'Submission not found' });
+      }
+
+      const assignment = await Assignment.findById(submission.assignmentId).populate('instructorId');
+      if (req.user.role === 'admin' || submission.studentId._id.toString() === req.user._id.toString() || assignment.instructorId._id.toString() === req.user._id.toString()) {
+        res.json(submission);
+      } else {
+        res.status(403).json({ message: 'You are not authorized to view this submission' });
+      }
+    } catch (error) {
+      console.error('Error getting submission by ID:', error);
+      res.status(500).json({ message: 'Internal server error', error: error.message });
     }
   }),
 
-  // Update submission (only creator or admin)
+  // Update submission (only student or admin)
   updateSubmission: asyncHandler(async (req, res) => {
-    const submission = await Submission.findById(req.params.id);
+    try {
+      const submission = await Submission.findById(req.params.id);
 
-    if (submission) {
-      if (req.user.role !== 'admin' && submission.userId.toString() !== req.user._id.toString()) {
+      if (!submission) {
+        return res.status(404).json({ message: 'Submission not found' });
+      }
+
+      if (req.user.role !== 'admin' && submission.studentId.toString() !== req.user._id.toString()) {
         return res.status(403).json({ message: 'You are not authorized to update this submission' });
       }
 
       submission.fileUrl = req.body.fileUrl || submission.fileUrl;
-      submission.submissionText = req.body.submissionText || submission.submissionText;
-      submission.grade = req.body.grade || submission.grade;
       submission.feedback = req.body.feedback || submission.feedback;
+      submission.submissionDate = Date.now();
 
       const updatedSubmission = await submission.save();
       res.json(updatedSubmission);
-    } else {
-      res.status(404).json({ message: 'Submission not found' });
+    } catch (error) {
+      console.error('Error updating submission:', error);
+      res.status(500).json({ message: 'Internal server error', error: error.message });
     }
   }),
 
-  // Delete submission (only creator or admin)
+  // Delete submission (only student or admin)
   deleteSubmission: asyncHandler(async (req, res) => {
-    const submission = await Submission.findById(req.params.id);
+    try {
+      const submission = await Submission.findById(req.params.id);
 
-    if (submission) {
-      if (req.user.role !== 'admin' && submission.userId.toString() !== req.user._id.toString()) {
+      if (!submission) {
+        return res.status(404).json({ message: 'Submission not found' });
+      }
+
+      if (req.user.role !== 'admin' && submission.studentId.toString() !== req.user._id.toString()) {
         return res.status(403).json({ message: 'You are not authorized to delete this submission' });
       }
 
       await submission.remove();
       res.json({ message: 'Submission removed' });
-    } else {
-      res.status(404).json({ message: 'Submission not found' });
+    } catch (error) {
+      console.error('Error deleting submission:', error);
+      res.status(500).json({ message: 'Internal server error', error: error.message });
     }
   }),
 
   // Get submissions by assignment ID
   getSubmissionsByAssignmentId: asyncHandler(async (req, res) => {
-    const submissions = await Submission.find({ assignmentId: req.params.assignmentId }).populate('assignmentId userId');
-    res.json(submissions);
+    try {
+      const assignment = await Assignment.findById(req.params.assignmentId).populate('instructorId courseId');
+      if (!assignment) {
+        return res.status(404).json({ message: 'Assignment not found' });
+      }
+
+      if (req.user.role === 'admin' || assignment.instructorId._id.toString() === req.user._id.toString() || (await Course.findById(assignment.courseId)).students.includes(req.user._id)) {
+        const submissions = await Submission.find({ assignmentId: req.params.assignmentId }).populate('studentId');
+        res.json(submissions);
+      } else {
+        res.status(403).json({ message: 'You are not authorized to view these submissions' });
+      }
+    } catch (error) {
+      console.error('Error getting submissions by assignment ID:', error);
+      res.status(500).json({ message: 'Internal server error', error: error.message });
+    }
   }),
 
   // Get submissions by user ID
   getSubmissionsByUserId: asyncHandler(async (req, res) => {
-    const submissions = await Submission.find({ userId: req.params.userId }).populate('assignmentId userId');
-    res.json(submissions);
+    try {
+      if (req.user.role === 'admin' || req.user._id.toString() === req.params.userId) {
+        const submissions = await Submission.find({ studentId: req.params.userId }).populate('assignmentId');
+        res.json(submissions);
+      } else {
+        res.status(403).json({ message: 'You are not authorized to view these submissions' });
+      }
+    } catch (error) {
+      console.error('Error getting submissions by user ID:', error);
+      res.status(500).json({ message: 'Internal server error', error: error.message });
+    }
+  }),
+
+  // Grade submission (only instructor)
+  gradeSubmission: asyncHandler(async (req, res) => {
+    try {
+      const { submissionId, grade, feedback } = req.body;
+      const submission = await Submission.findById(submissionId).populate('assignmentId studentId');
+
+      if (!submission) {
+        return res.status(404).json({ message: 'Submission not found' });
+      }
+
+      const assignment = await Assignment.findById(submission.assignmentId).populate('instructorId');
+
+      if (assignment.instructorId._id.toString() !== req.user._id.toString()) {
+        return res.status(403).json({ message: 'You are not authorized to grade this submission' });
+      }
+
+      submission.grade = grade;
+      submission.feedback = feedback;
+      await submission.save();
+
+      res.json({ message: 'Submission graded successfully' });
+    } catch (error) {
+      console.error('Error grading submission:', error);
+      res.status(500).json({ message: 'Internal server error during grading', error: error.message });
+    }
   }),
 };
 
