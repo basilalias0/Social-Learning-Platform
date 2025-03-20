@@ -6,20 +6,14 @@ const asyncHandler = require('express-async-handler');
 const questionController = {
   // Create a new question
   createQuestion: asyncHandler(async (req, res) => {
-    const { quizId, questionText, options, correctAnswer } = req.body;
+    const { chatId, questionText, options, correctAnswer } = req.body;
 
-    if (!quizId || !questionText || !options || !correctAnswer) {
-      return res.status(400).json({ message: 'QuizId, questionText, options, and correctAnswer are required' });
-    }
-
-    // Check if the quiz exists
-    const quiz = await Quiz.findById(quizId);
-    if (!quiz) {
-      return res.status(404).json({ message: 'Quiz not found' });
+    if (!chatId || !questionText || !options || !correctAnswer) {
+      return res.status(400).json({ message: 'chatId, questionText, options, and correctAnswer are required' });
     }
 
     const question = new Question({
-      quizId,
+      chatId,
       questionText,
       options,
       correctAnswer,
@@ -28,6 +22,25 @@ const questionController = {
     const createdQuestion = await question.save();
     res.status(201).json(createdQuestion);
   }),
+
+  answerQuestion: asyncHandler(async (req, res) => {
+    const { questionId, answer } = req.body;
+
+    if (!questionId || !answer) {
+      return res.status(400).json({ message: 'questionId and answer are required' });
+    }
+
+    const question = await Question.findById(questionId);
+    if (!question) {
+      return res.status(404).json({ message: 'Question not found' });
+    }
+
+    question.userAnswers.push({ userId: req.user._id, answer });
+    await question.save();
+
+    res.json({ message: 'Answer submitted successfully' });
+  }),
+
 
   // Get all questions
   getAllQuestions: asyncHandler(async (req, res) => {
@@ -43,6 +56,11 @@ const questionController = {
     } else {
       res.status(404).json({ message: 'Question not found' });
     }
+  }),
+
+  getQuestionsByChatId: asyncHandler(async (req, res) => {
+    const questions = await Question.find({ chatId: req.params.chatId });
+    res.json(questions);
   }),
 
   // Update question (only admin or instructor who created the quiz)

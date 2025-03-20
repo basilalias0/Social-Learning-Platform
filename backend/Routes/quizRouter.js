@@ -4,14 +4,13 @@ const quizRouter = express.Router();
 const quizController = require('../Controllers/quizController');
 const { protect } = require('../Middlewares/authMiddleware');
 
-// Public Routes
 quizRouter.get('/', quizController.getAllQuizzes);
 quizRouter.get('/:id', quizController.getQuizById);
-quizRouter.get('/course/:courseId', quizController.getQuizzesByCourseId);
-quizRouter.get('/instructor/:instructorId', quizController.getQuizzesByInstructorId);
+quizRouter.get('/module/:moduleId', quizController.getQuizzesByModuleId);
 
-// Protected Routes
-quizRouter.post('/', protect, quizController.createQuiz);
+quizRouter.post('/question', protect, quizController.addQuestionToQuiz); 
+quizRouter.put('/question', protect, quizController.updateQuestionInQuiz);
+
 quizRouter.put('/:id', protect, quizController.updateQuiz);
 quizRouter.delete('/:id', protect, quizController.deleteQuiz);
 

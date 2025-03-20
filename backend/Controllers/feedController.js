@@ -21,29 +21,44 @@ const feedController = {
       }
 
       // Format feed items for easier frontend consumption
-      const formattedFeedItems = await Promise.all(feed.feedItems.map(async (item) => {
-        if (item.type === 'post') {
-          const post = await Post.findById(item.itemId._id).populate('userId forumId');
-          return {
-            type: 'post',
-            item: post,
-          };
-        } else if (item.type === 'reply') {
-          const reply = await Reply.findById(item.itemId._id).populate('userId postId');
-          const post = await Post.findById(reply.postId).populate('userId forumId');
-          return {
-            type: 'reply',
-            item: reply,
-            post: post, // include the relevant post.
-          };
-        }
-        return null;
-      }));
+      const formattedFeedItems = await Promise.all(
+        feed.feedItems.map(async (item) => {
+          if (item.type === 'post') {
+            const post = await Post.findById(item.itemId._id).populate(
+              'userId forumId'
+            );
+            return {
+              type: 'post',
+              item: post,
+            };
+          } else if (item.type === 'reply') {
+            const reply = await Reply.findById(item.itemId._id).populate(
+              'userId postId'
+            );
+            if (reply && reply.postId) {
+              const post = await Post.findById(reply.postId).populate(
+                'userId forumId'
+              );
+              return {
+                type: 'reply',
+                item: reply,
+                post: post, // include the relevant post.
+              };
+            } else {
+              // Handle the case where reply or reply.postId is null
+              return null; // Or handle this case in a way that suits your application.
+            }
+          }
+          return null;
+        })
+      );
 
-      res.json({ feedItems: formattedFeedItems.filter(item => item !== null) });
+      res.json({ feedItems: formattedFeedItems.filter((item) => item !== null) });
     } catch (error) {
       console.error('Error getting user feed:', error);
-      res.status(500).json({ message: 'Internal server error', error: error.message });
+      res
+        .status(500)
+        .json({ message: 'Internal server error', error: error.message });
     }
   }),
 };

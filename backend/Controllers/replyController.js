@@ -2,6 +2,9 @@
 const Reply = require('../Models/replyModel');
 const Post = require('../Models/postModel');
 const asyncHandler = require('express-async-handler');
+const User = require('../Models/userModel');
+const { default: mongoose } = require('mongoose');
+const Feed = require('../Models/feedModel');
 
 const replyController = {
   // Create a new reply
@@ -29,13 +32,13 @@ const replyController = {
     await post.save();
 
     const user = await User.findById(req.user._id);
-    const followers = user.followers;
+    const followers = user.followingUsers;
     const friends = user.friends;
 
     const postUser = await User.findById(post.userId);
 
     let userIds = [...followers, ...friends, req.user._id, postUser._id];
-    userIds = [...new Set(userIds.map(id => id.toString()))].map(id => mongoose.Types.ObjectId(id));
+    userIds = [...new Set(userIds.map(id => id.toString()))].map(id => new mongoose.Types.ObjectId(id));
 
     for (const userId of userIds) {
       let feed = await Feed.findOne({ userId: userId });
@@ -92,7 +95,7 @@ const replyController = {
         return res.status(403).json({ message: 'You are not authorized to delete this reply' });
       }
 
-      await reply.remove();
+      await Reply.findByIdAndDelete(req.params.id)
       res.json({ message: 'Reply removed' });
     } else {
       res.status(404).json({ message: 'Reply not found' });
