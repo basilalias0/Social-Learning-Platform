@@ -11,5 +11,6 @@ courseRouter.put('/:id',protect,authorize('instructor','admin'), courseControlle
 courseRouter.delete('/:id', protect, courseController.deleteCourse); 
 courseRouter.get('/category/:category', protect, courseController.getCoursesByCategory); 
 courseRouter.get('/instructor/:instructorId', protect, courseController.getCoursesByInstructorId);
+courseRouter.post('/enroll',protect, courseController.enrollUserInCourse);
 
 module.exports = courseRouter;

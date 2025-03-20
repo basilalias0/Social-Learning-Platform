@@ -52,6 +52,10 @@ const unitController = {
       });
 
       const createdUnit = await unit.save();
+
+      course.units.push(createdUnit._id);
+      await course.save();
+      
       res.status(201).json(createdUnit);
     } catch (error) {
       console.error('Error creating unit:', error);

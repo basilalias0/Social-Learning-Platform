@@ -186,6 +186,56 @@ const courseController = {
       res.status(500).json({ message: 'Internal server error', error: error.message });
     }
   }),
+  enrollUserInCourse: asyncHandler(async (req, res) => {
+    try {
+      const { courseId } = req.body;
+      const userId = req.user._id;
+
+      const course = await Course.findById(courseId);
+      const user = await User.findById(userId);
+
+      if (!course) {
+        return res.status(404).json({ message: 'Course not found' });
+      }
+
+      if (!user) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+
+      if (course.students.includes(userId)) {
+        return res.status(400).json({ message: 'User is already enrolled in this course' });
+      }
+
+      course.students.push(userId);
+      await course.save();
+
+      user.enrolledCourses.push(courseId);
+      await user.save();
+
+      // Update modules with enrolled student
+      await Module.updateMany(
+        { courseId: courseId },
+        { $push: { students: userId } }
+      );
+
+      const notification = new Notification({
+        userId: userId,
+        type: 'courseEnrollment',
+        message: `You have successfully enrolled in the course "${course.title}".`,
+        relatedId: courseId,
+        relatedModel: 'Course',
+      });
+      await notification.save();
+
+      res.json({ message: 'User enrolled in course' });
+    } catch (error) {
+      console.error('Error enrolling user:', error);
+      if (error.name === 'CastError') {
+        return res.status(400).json({ message: "Invalid Course ID or User ID." });
+      }
+      res.status(500).json({ message: 'Internal server error', error: error.message });
+    }
+  }),
 };
 
 module.exports = courseController;

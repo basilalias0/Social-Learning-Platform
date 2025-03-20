@@ -1,36 +1,31 @@
-// discussionForumController.js
-// const DiscussionForum = require('../Models/discussionForumModel');
+const DiscussionForum = require('../Models/discussionForumModel');
 const asyncHandler = require('express-async-handler');
-
+const Feed = require('../Models/feedModel');
 
 const discussionForumController = {
-  // Create a new discussion forum
   createDiscussionForum: asyncHandler(async (req, res) => {
-    const { title, description, courseId } = req.body;
+    const { title } = req.body;
 
-    if (!title || !description || !courseId) {
-      return res.status(400).json({ message: 'Please provide all required fields' });
+    if (!title) {
+      return res.status(400).json({ message: 'Title is required' });
     }
 
     const forum = new DiscussionForum({
       title,
-      description,
-      courseId,
+      userId: req.user._id,
     });
 
     const createdForum = await forum.save();
     res.status(201).json(createdForum);
   }),
 
-  // Get all discussion forums
   getAllDiscussionForums: asyncHandler(async (req, res) => {
-    const forums = await DiscussionForum.find().populate('courseId');
+    const forums = await DiscussionForum.find().populate('userId');
     res.json(forums);
   }),
 
-  // Get discussion forum by ID
   getDiscussionForumById: asyncHandler(async (req, res) => {
-    const forum = await DiscussionForum.findById(req.params.id).populate('courseId');
+    const forum = await DiscussionForum.findById(req.params.id).populate('userId');
     if (forum) {
       res.json(forum);
     } else {
@@ -38,14 +33,15 @@ const discussionForumController = {
     }
   }),
 
-  // Update discussion forum
   updateDiscussionForum: asyncHandler(async (req, res) => {
     const forum = await DiscussionForum.findById(req.params.id);
 
     if (forum) {
+      if (forum.userId.toString() !== req.user._id.toString()) {
+        return res.status(403).json({ message: 'You are not authorized to update this forum' });
+      }
+
       forum.title = req.body.title || forum.title;
-      forum.description = req.body.description || forum.description;
-      forum.courseId = req.body.courseId || forum.courseId;
 
       const updatedForum = await forum.save();
       res.json(updatedForum);
@@ -54,23 +50,19 @@ const discussionForumController = {
     }
   }),
 
-  // Delete discussion forum
   deleteDiscussionForum: asyncHandler(async (req, res) => {
     const forum = await DiscussionForum.findById(req.params.id);
 
     if (forum) {
+      if (req.user.role !== 'admin') {
+        return res.status(403).json({ message: 'You are not authorized to delete this forum' });
+      }
       await forum.remove();
       res.json({ message: 'Forum removed' });
     } else {
       res.status(404).json({ message: 'Forum not found' });
     }
   }),
-
-  // Get forums by courseId
-  getForumsByCourseId: asyncHandler(async(req, res)=>{
-    const forums = await DiscussionForum.find({courseId: req.params.courseId}).populate('courseId');
-    res.json(forums);
-  })
 };
 
 module.exports = discussionForumController;

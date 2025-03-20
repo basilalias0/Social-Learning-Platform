@@ -12,7 +12,6 @@ const replyController = {
       return res.status(400).json({ message: 'Content and postId are required' });
     }
 
-    // Check if the post exists
     const post = await Post.findById(postId);
     if (!post) {
       return res.status(404).json({ message: 'Post not found' });
@@ -21,10 +20,32 @@ const replyController = {
     const reply = new Reply({
       content,
       postId,
-      userId: req.user._id, // Set the user who created the reply
+      userId: req.user._id,
     });
 
     const createdReply = await reply.save();
+
+    post.replies.push(createdReply._id);
+    await post.save();
+
+    const user = await User.findById(req.user._id);
+    const followers = user.followers;
+    const friends = user.friends;
+
+    const postUser = await User.findById(post.userId);
+
+    let userIds = [...followers, ...friends, req.user._id, postUser._id];
+    userIds = [...new Set(userIds.map(id => id.toString()))].map(id => mongoose.Types.ObjectId(id));
+
+    for (const userId of userIds) {
+      let feed = await Feed.findOne({ userId: userId });
+      if (!feed) {
+        feed = new Feed({ userId: userId, feedItems: [] });
+      }
+      feed.feedItems.unshift({ type: 'reply', itemId: createdReply._id });
+      await feed.save();
+    }
+
     res.status(201).json(createdReply);
   }),
 

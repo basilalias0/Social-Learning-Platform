@@ -2,9 +2,9 @@
 const express = require('express');
 const submissionRouter = express.Router();
 const submissionController = require('../Controllers/submissionController');
-const { protect } = require('../Middlewares/authMiddleware'); // Assuming you have protect middleware
-const upload = require('../Middlewares/uploadMiddleware'); // Assuming you have upload middleware
-
+const { protect } = require('../Middlewares/authMiddleware');
+const upload = require('../Middlewares/imageUpload');
+upload
 submissionRouter.post('/', protect, upload('submissions').single('file'), submissionController.createSubmission);
 submissionRouter.get('/', protect, submissionController.getAllSubmissions); // Admin only
 submissionRouter.get('/:id', protect, submissionController.getSubmissionById);

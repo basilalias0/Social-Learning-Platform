@@ -18,7 +18,5 @@ userRouter.put('/friend-request/accept', protect, userController.acceptFriendReq
 userRouter.put('/friend-request/reject', protect, userController.rejectFriendRequest);
 userRouter.post('/follow-user', protect, userController.followUser);
 userRouter.post('/unfollow-user', protect, userController.unfollowUser);
-userRouter.get('/feed', protect, userController.getUserFeed);
-userRouter.post('/generate-feed', protect, userController.generateUserFeed);
 
 module.exports = userRouter;

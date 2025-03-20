@@ -33,6 +33,10 @@ const moduleController = {
       });
   
       const createdModule = await module.save();
+
+      course.modules.push(createdModule._id);
+      await course.save();
+
       res.status(201).json(createdModule);
     } catch (error) {
       console.error('Error creating module:', error);

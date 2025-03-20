@@ -7,30 +7,32 @@ const asyncHandler = require('express-async-handler');
 const submissionController = {
   // Create a new submission
   createSubmission: asyncHandler(async (req, res) => {
-    const { assignmentId, fileUrl, feedback } = req.body;
-
+    const { assignmentId, feedback } = req.body;
+  
     if (!assignmentId) {
       return res.status(400).json({ message: 'AssignmentId is required' });
     }
-
+  
     try {
       const assignment = await Assignment.findById(assignmentId).populate('courseId');
       if (!assignment) {
         return res.status(404).json({ message: 'Assignment not found' });
       }
-
+  
       const course = await Course.findById(assignment.courseId);
       if (!course.students.includes(req.user._id)) {
-        return res.status(403).json({ message: 'You are not authorized to submit to this assignment' });
+        return res.status(403).json({ message: 'You are not enrolled in this course to submit to this assignment' });
       }
-
+  
+      const fileUrl = req.file ? req.file.path : null; // Get Cloudinary URL from req.file
+  
       const submission = new Submission({
         assignmentId,
         studentId: req.user._id,
         fileUrl,
         feedback,
       });
-
+  
       const createdSubmission = await submission.save();
       res.status(201).json(createdSubmission);
     } catch (error) {

@@ -16,6 +16,7 @@ const replyRouter = require('./replyRouter');
 const studyGroupRouter = require('./studyGroupRouter');
 const submissionRouter = require('./submissionRouter');
 const unitRouter = require('./unitRouter');
+const feedRouter = require('./feedRoute');
 const router = express();
 
 
@@ -24,6 +25,7 @@ router.use("/assignment",assignmentRouter)
 router.use("/chat",chatMessageRouter)
 router.use('/course',courseRouter)
 router.use("/discussion-forum",discussionForumRouter)
+router.use("/feed",feedRouter)
 router.use("/feedback",feedbackRouter)
 router.use("/gamification",gamificationRouter)
 router.use("/resource-library",resourceLibraryRouter)

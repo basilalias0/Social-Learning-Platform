@@ -2,6 +2,8 @@
 const DiscussionForum = require('../Models/discussionForumModel');
 const asyncHandler = require('express-async-handler');
 const Post = require('../Models/postModel');
+const User = require('../Models/userModel');
+const Feed = require('../Models/feedModel');
 
 const postController = {
   // Create a new post
@@ -12,7 +14,6 @@ const postController = {
       return res.status(400).json({ message: 'Content and forumId are required' });
     }
 
-    // Check if the forum exists
     const forum = await DiscussionForum.findById(forumId);
     if (!forum) {
       return res.status(404).json({ message: 'Forum not found' });
@@ -21,19 +22,26 @@ const postController = {
     const post = new Post({
       content,
       forumId,
-      userId: req.user._id, // Set the user who created the post
+      userId: req.user._id,
     });
 
     const createdPost = await post.save();
 
-    const notification = new Notification({
-      userId: req.user._id,
-      type: 'newPost',
-      message: `You created a new post.`,
-      relatedId: createdPost._id,
-      relatedModel: 'Post',
-    });
-    await notification.save();
+    // Update Feeds
+    const user = await User.findById(req.user._id);
+    const followers = user.followingUsers;
+    const friends = user.friends;
+
+    const userIds = [...followers, ...friends, req.user._id];
+
+    for (const userId of userIds) {
+      let feed = await Feed.findOne({ userId: userId });
+      if (!feed) {
+        feed = new Feed({ userId: userId, feedItems: [] });
+      }
+      feed.feedItems.unshift({ type: 'post', itemId: createdPost._id });
+      await feed.save();
+    }
 
     res.status(201).json(createdPost);
   }),
@@ -81,7 +89,7 @@ const postController = {
         return res.status(403).json({ message: 'You are not authorized to delete this post' });
       }
 
-      await post.remove();
+      await Post.findByIdAndDelete(req.params.id)
       res.json({ message: 'Post removed' });
     } else {
       res.status(404).json({ message: 'Post not found' });
