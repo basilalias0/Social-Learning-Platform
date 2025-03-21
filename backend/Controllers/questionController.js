@@ -1,12 +1,11 @@
 // questionController.js
 const Question = require('../Models/questionModel');
-const Quiz = require('../Models/quizModel');
 const asyncHandler = require('express-async-handler');
+const Notification = require('../Models/notificationModel');
 
 const questionController = {
-  // Create a new question
   createQuestion: asyncHandler(async (req, res) => {
-    const { chatId, questionText, options, correctAnswer } = req.body;
+    const { chatId, questionText, options, correctAnswer, deadline } = req.body;
 
     if (!chatId || !questionText || !options || !correctAnswer) {
       return res.status(400).json({ message: 'chatId, questionText, options, and correctAnswer are required' });
@@ -17,6 +16,7 @@ const questionController = {
       questionText,
       options,
       correctAnswer,
+      deadline: deadline ? new Date(deadline) : new Date(Date.now() + 24 * 60 * 60 * 1000), // Default 24 hours
     });
 
     const createdQuestion = await question.save();
@@ -41,16 +41,13 @@ const questionController = {
     res.json({ message: 'Answer submitted successfully' });
   }),
 
-
-  // Get all questions
   getAllQuestions: asyncHandler(async (req, res) => {
-    const questions = await Question.find().populate('quizId');
+    const questions = await Question.find();
     res.json(questions);
   }),
 
-  // Get question by ID
   getQuestionById: asyncHandler(async (req, res) => {
-    const question = await Question.findById(req.params.id).populate('quizId');
+    const question = await Question.findById(req.params.id);
     if (question) {
       res.json(question);
     } else {
@@ -63,20 +60,14 @@ const questionController = {
     res.json(questions);
   }),
 
-  // Update question (only admin or instructor who created the quiz)
   updateQuestion: asyncHandler(async (req, res) => {
-    const question = await Question.findById(req.params.id).populate('quizId');
+    const question = await Question.findById(req.params.id);
 
     if (question) {
-      const quiz = await Quiz.findById(question.quizId);
-
-      if (req.user.role !== 'admin' && quiz.instructorId.toString() !== req.user._id.toString()) {
-        return res.status(403).json({ message: 'You are not authorized to update this question' });
-      }
-
       question.questionText = req.body.questionText || question.questionText;
       question.options = req.body.options || question.options;
       question.correctAnswer = req.body.correctAnswer || question.correctAnswer;
+      question.deadline = req.body.deadline || question.deadline;
 
       const updatedQuestion = await question.save();
       res.json(updatedQuestion);
@@ -85,29 +76,35 @@ const questionController = {
     }
   }),
 
-  // Delete question (only admin or instructor who created the quiz)
   deleteQuestion: asyncHandler(async (req, res) => {
-    const question = await Question.findById(req.params.id).populate('quizId');
+    const question = await Question.findByIdAndDelete(req.params.id);
 
     if (question) {
-      const quiz = await Quiz.findById(question.quizId);
-
-      if (req.user.role !== 'admin' && quiz.instructorId.toString() !== req.user._id.toString()) {
-        return res.status(403).json({ message: 'You are not authorized to delete this question' });
-      }
-
-      await question.remove();
       res.json({ message: 'Question removed' });
     } else {
       res.status(404).json({ message: 'Question not found' });
     }
   }),
 
-  // Get questions by quiz ID
-  getQuestionsByQuizId: asyncHandler(async (req, res) => {
-    const questions = await Question.find({ quizId: req.params.quizId }).populate('quizId');
-    res.json(questions);
-  }),
+  checkExpiredPolls: async () => {
+    const now = new Date();
+    const expiredPolls = await Question.find({ deadline: { $lte: now } });
+
+    for (const poll of expiredPolls) {
+      const notification = new Notification({
+        userId: poll.chatId, // Notify the chat
+        type: 'pollExpired',
+        message: `The poll "${poll.questionText}" has expired.`,
+        relatedItemId: poll._id,
+      });
+      await notification.save();
+      if(io){
+        io.to(poll.chatId).emit('pollExpired', poll);
+      }
+    }
+  },
 };
+
+
 
 module.exports = questionController;

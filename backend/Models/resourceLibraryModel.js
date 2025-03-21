@@ -1,4 +1,3 @@
-// resourceLibraryModel.js
 const mongoose = require('mongoose');
 
 const resourceLibrarySchema = new mongoose.Schema({
@@ -6,9 +5,10 @@ const resourceLibrarySchema = new mongoose.Schema({
   description: { type: String },
   fileUrl: { type: String, required: true },
   userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  category: { type: String }, // e.g., "PDF," "Video," "Document"
+  category: { type: String },
+  sharedWithUsers: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }], // Track shared users
+  sharedWithGroups: [{ type: mongoose.Schema.Types.ObjectId, ref: 'StudyGroup' }], // Track shared groups
 }, { timestamps: true });
 
 const ResourceLibrary = mongoose.model('ResourceLibrary', resourceLibrarySchema);
-
 module.exports = ResourceLibrary;

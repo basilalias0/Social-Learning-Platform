@@ -6,18 +6,20 @@ const User = require('../Models/userModel'); // Import User model
 
 const resourceLibraryController = {
   // Create a new resource
-  createResource: asyncHandler(async (req, res) => {
-    const { title, description, fileUrl, category } = req.body;
+  createResource:asyncHandler(async (req, res) => {
+    const { title, description, category } = req.body;
 
-    if (!title || !fileUrl) {
-      return res.status(400).json({ message: 'Title and fileUrl are required' });
+    if (!title || !req.file) {
+      return res.status(400).json({ message: 'Title and file are required' });
     }
+
+    const fileUrl = req.file.path; // Get the Cloudinary URL
 
     const resource = new ResourceLibrary({
       title,
       description,
       fileUrl,
-      userId: req.user._id, // Set the user who created the resource
+      userId: req.user._id,
       category,
     });
 
@@ -45,21 +47,24 @@ const resourceLibraryController = {
   updateResource: asyncHandler(async (req, res) => {
     const resource = await ResourceLibrary.findById(req.params.id);
 
-    if (resource) {
-      if (req.user.role !== 'admin' && resource.userId.toString() !== req.user._id.toString()) {
-        return res.status(403).json({ message: 'You are not authorized to update this resource' });
-      }
-
-      resource.title = req.body.title || resource.title;
-      resource.description = req.body.description || resource.description;
-      resource.fileUrl = req.body.fileUrl || resource.fileUrl;
-      resource.category = req.body.category || resource.category;
-
-      const updatedResource = await resource.save();
-      res.json(updatedResource);
-    } else {
-      res.status(404).json({ message: 'Resource not found' });
+    if (!resource) {
+      return res.status(404).json({ message: 'Resource not found' });
     }
+
+    if (req.user.role !== 'admin' && resource.userId.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: 'You are not authorized to update this resource' });
+    }
+
+    resource.title = req.body.title || resource.title;
+    resource.description = req.body.description || resource.description;
+    resource.category = req.body.category || resource.category;
+
+    if (req.file) {
+      resource.fileUrl = req.file.path; // Update the file URL
+    }
+
+    const updatedResource = await resource.save();
+    res.json(updatedResource);
   }),
 
   // Delete resource (only creator or admin)
@@ -90,48 +95,72 @@ const resourceLibraryController = {
     res.json(resources);
   }),
 
-  // Share resource with user
   shareResource: asyncHandler(async (req, res) => {
-    const { resourceId, userId } = req.body;
+    const { resourceId, userId, groupId } = req.body;
 
     try {
       const resource = await ResourceLibrary.findById(resourceId);
-      const user = await User.findById(userId);
-
       if (!resource) {
         return res.status(404).json({ message: 'Resource not found' });
       }
 
-      if (!user) {
-        return res.status(404).json({ message: 'User not found' });
+      if (userId) {
+        const user = await User.findById(userId);
+        if (!user) {
+          return res.status(404).json({ message: 'User not found' });
+        }
+
+        if (!resource.sharedWithUsers.includes(userId)) {
+          resource.sharedWithUsers.push(userId);
+          await resource.save();
+
+          const notification = new Notification({
+            userId: userId,
+            type: 'resourceShared',
+            message: `The resource "${resource.title}" was shared with you.`,
+            relatedItemId: resourceId,
+          });
+          await notification.save();
+
+          io.to(userId).emit('resourceShared', { resource, userId }); // Real-time update
+        }
       }
 
-      // Add logic to store shared resources in the user's profile
-      if (!user.sharedResources) {
-        user.sharedResources = [];
+      if (groupId) {
+        const group = await StudyGroup.findById(groupId);
+        if (!group) {
+          return res.status(404).json({ message: 'Group not found' });
+        }
+
+        if (!resource.sharedWithGroups.includes(groupId)) {
+          resource.sharedWithGroups.push(groupId);
+          await resource.save();
+
+          group.members.forEach(async (memberId) => {
+            const notification = new Notification({
+              userId: memberId,
+              type: 'resourceShared',
+              message: `The resource "<span class="math-inline">\{resource\.title\}" was shared in group "</span>{group.groupName}".`,
+              relatedItemId: resourceId,
+            });
+            await notification.save();
+            io.to(memberId).emit('resourceShared', { resource, groupId }); // Real-time update
+          });
+        }
       }
-
-      if (user.sharedResources.includes(resourceId)) {
-        return res.status(400).json({ message: 'Resource already shared with user' });
-      }
-
-      user.sharedResources.push(resourceId);
-      await user.save();
-
-      const notification = new Notification({
-        userId: userId,
-        type: 'resourceShared',
-        message: `The resource "${resource.title}" was shared with you.`,
-        relatedId: resourceId,
-        relatedModel: 'Resource',
-      });
-      await notification.save();
 
       res.json({ message: 'Resource shared successfully' });
     } catch (error) {
       console.error('Sharing error:', error);
       res.status(500).json({ message: 'Internal server error during sharing' });
     }
+  }),
+
+  searchResources: asyncHandler(async (req, res) => {
+    const { query } = req.query;
+    const resources = await ResourceLibrary.find({ title: { $regex: query, $options: 'i' } })
+      .populate('userId');
+    res.json(resources);
   }),
 };
 

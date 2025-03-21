@@ -1,17 +1,27 @@
 const express = require('express');
-const studyGroupRouter = express.Router();
-const { protect } = require('../Middlewares/authMiddleware');
+const groupRouter = express.Router();
 const studyGroupController = require('../Controllers/studyGroupController');
-const upload = require('../Middlewares/imageUpload');
+const { protect } = require('../Middlewares/authMiddleware');
+const upload = require('../Middlewares/upload');
 
-studyGroupRouter.post('/', protect, upload("groupImage").single('groupImage'), studyGroupController.createStudyGroup);
-studyGroupRouter.get('/', protect, studyGroupController.getAllStudyGroups);
-studyGroupRouter.get('/:id', protect, studyGroupController.getStudyGroupById);
-studyGroupRouter.put('/:id', protect, upload('groupImage').single('groupImage'), studyGroupController.updateStudyGroup);
-studyGroupRouter.delete('/:id', protect, studyGroupController.deleteStudyGroup);
-studyGroupRouter.put('/:id/addMember', protect, studyGroupController.addMember);
-studyGroupRouter.put('/:id/removeMember', protect, studyGroupController.removeMember);
-studyGroupRouter.post('/invite', protect, studyGroupController.inviteUserToGroup);
-studyGroupRouter.post('/join', protect, studyGroupController.joinGroup);
+groupRouter.post(
+  '/',
+  protect,
+  upload('studyGroups').single('groupImage'),
+  studyGroupController.createStudyGroup
+);
+groupRouter.get('/', studyGroupController.getAllStudyGroups);
+groupRouter.get('/:id', studyGroupController.getStudyGroupById);
+groupRouter.put(
+  '/:id',
+  protect,
+  upload('studyGroups').single('groupImage'),
+  studyGroupController.updateStudyGroup
+);
+groupRouter.delete('/:id', protect, studyGroupController.deleteStudyGroup);
+groupRouter.post('/addMember/:id', protect, studyGroupController.addMember);
+groupRouter.post('/removeMember/:id', protect, studyGroupController.removeMember);
+groupRouter.post('/invite', protect, studyGroupController.inviteUserToGroup);
+groupRouter.post('/join', protect, studyGroupController.joinGroup);
 
-module.exports = studyGroupRouter;
+module.exports = groupRouter;

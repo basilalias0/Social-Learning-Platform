@@ -1,6 +1,6 @@
-const Enrollment = require('../Models/enrollmentModel');
-const Course = require('../Models/courseModel');
-const Payment = require('../Models/paymentModel');
+const Enrollment = require('./enrollmentModel');
+const Course = require('./courseModel');
+const Payment = require('./paymentModel');
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const asyncHandler = require('express-async-handler');
 

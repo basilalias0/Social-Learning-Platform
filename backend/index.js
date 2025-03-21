@@ -3,7 +3,7 @@ const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const http = require('http');
-const setupSocket = require('./utils/chatSocket');
+const Socket = require('./utils/chatSocket');
 const errorHandler = require('./Middlewares/errorHandler'); // Your error handler middleware
 const router  = require('./Routes');
 
@@ -25,7 +25,8 @@ mongoose.connect(process.env.MONGO_URI)
 .then(() => console.log('MongoDB Connected'))
 .catch(err => console.error('MongoDB Connection Error:', err));
 
-setupSocket(server);
+Socket.setupSocket(server);
+Socket.runScheduledTasks()
 // Routes
 app.use('/api/v1', router);
 

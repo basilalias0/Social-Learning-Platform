@@ -8,9 +8,6 @@ const Feed = require('../Models/feedModel');
 const sendEmail = require('../utils/sendEmail');
 const crypto = require('crypto');
 const Post = require('../Models/postModel');
-const StudyGroup = require('../Models/studyGroupModel');
-const Gamification = require('../Models/gamificationModel');
-const ResourceLibrary = require('../Models/resourceLibraryModel');
 
 const userController = {
   // Register a new user

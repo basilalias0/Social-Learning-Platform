@@ -5,6 +5,9 @@ const ChatMessage = require('../Models/chatMessageModel');
 const chatController = {
   getChatMessagesBetweenUsers: asyncHandler(async (req, res) => {
     const { userId1, userId2 } = req.params;
+    const page = parseInt(req.query.page) || 1;
+    const limit = 25;
+    const skip = (page - 1) * limit;
 
     const messages = await ChatMessage.find({
       $or: [
@@ -13,17 +16,24 @@ const chatController = {
       ],
     })
       .sort({ createdAt: 1 })
-      .populate('senderId receiverId');
+      .populate('senderId receiverId')
+      .skip(skip)
+      .limit(limit);
 
     res.json(messages);
   }),
 
   getChatMessagesInGroup: asyncHandler(async (req, res) => {
     const { groupId } = req.params;
+    const page = parseInt(req.query.page) || 1;
+    const limit = 25;
+    const skip = (page - 1) * limit;
 
     const messages = await ChatMessage.find({ groupId })
       .sort({ createdAt: 1 })
-      .populate('senderId groupId');
+      .populate('senderId groupId')
+      .skip(skip)
+      .limit(limit);
 
     res.json(messages);
   }),

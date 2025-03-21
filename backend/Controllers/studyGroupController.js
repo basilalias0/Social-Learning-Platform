@@ -1,8 +1,8 @@
 // studyGroupController.js
-const StudyGroup = require('../Models/studyGroupModel');
 const DiscussionForum = require('../Models/discussionForumModel');
 const asyncHandler = require('express-async-handler');
 const Notification = require('../Models/notificationModel');
+const StudyGroup = require('../Models/studyGroupModel');
 
 const studyGroupController = {
   // Create a new study group
